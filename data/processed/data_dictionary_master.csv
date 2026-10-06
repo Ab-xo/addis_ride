@@ -1,0 +1,46 @@
+column,dtype,in_train,in_test,source,description,derivation,known_at_forecast_time,model_feature
+record_id,object,True,False,train,Original train row id (lowest id kept when duplicates were merged),raw record_id,n/a,False
+row_id,object,False,True,test,Test row id; join key for the submission,raw row_id,n/a,False
+zone,object,True,True,trips,Canonical zone label (12 values),normalize_zone(raw zone),yes,False
+pickup_hour,datetime64[ns],True,True,trips,"Start of the hour, Addis Ababa local time (EAT, naive)",parsed from 3 raw formats,yes,False
+trips,float64,True,False,train,TARGET: trips requested in the zone-hour,"sentinels -> NaN, x8 spikes / 8, duplicates averaged",no (target),False
+avg_fare_birr,float64,True,False,train,"Average fare (analysis/demo only, NOT a model input)","raw, duplicates averaged",no,False
+avg_wait_min,float64,True,False,train,"Average wait (analysis only, NOT a model input)","-1 -> NaN, duplicates averaged",no,False
+active_drivers,float64,True,False,train,"Active drivers (analysis only, NOT a model input)","raw, duplicates averaged",no,False
+weather_source,object,True,True,weather,observed (history) or forecast (1-14 Nov); info only,weather.data_type,yes,False
+lag_count,int64,True,True,trips history,How many of the 4 lags were found before filling; info only,count of non-missing lags,yes,False
+zone_id,int64,True,True,trips.zone,Zones differ in level and daily shape,index of zone in the 12 canonical labels,yes,True
+hour,int32,True,True,trips.pickup_hour,Strong daily cycle (commute peaks),"pickup_hour.hour (0-23, local)",yes,True
+day_of_week,int32,True,True,trips.pickup_hour,Weekday vs weekend demand shapes differ,pickup_hour.dayofweek (0=Mon),yes,True
+is_weekend,int64,True,True,trips.pickup_hour,"Business zones drop, nightlife zones rise at weekends",day_of_week >= 5,yes,True
+month,int32,True,True,trips.pickup_hour,Seasonality (rainy season Jun-Sep),pickup_hour.month,yes,True
+is_public_holiday,int64,True,True,"events (public_holiday, confirmed)",Holidays change city-wide demand,date of pickup_hour is a listed public holiday,yes,True
+is_school_break,int64,True,True,"events (school_break, confirmed)",Fewer school/commute trips,date inside a school-break period,yes,True
+is_payday_window,int64,True,True,trips.pickup_hour,Riders may spend more around payday,day >= days_in_month - 2 or day <= 2,yes,True
+days_since_start,int64,True,True,trips.pickup_hour,Demand grows through the year; lets the model follow the trend,(date - 2025-01-01) in days,yes,True
+zone_age_days,int64,True,True,trips history (first record per zone),A newly launched zone (Ayat) ramps up,days since the zone's first record (0 before launch),yes,True
+temp_c,float64,True,True,weather.temp_c,Comfort affects walking vs riding,cleaned temperature at the local hour (forecast for Nov),yes,True
+rain_mm,float64,True,True,weather.rain_mm,Rain pushes people into cars,"rain in the previous hour, mm",yes,True
+rain_3h_mm,float64,True,True,weather.rain_mm,Wet streets keep demand up after rain stops,sum of rain_mm over this and the 2 previous hours,yes,True
+rain_class,int64,True,True,weather.rain_mm,Non-linear dose-response,"0 none, 1 light (<=1 mm), 2 moderate (<=4 mm), 3 heavy (>4 mm)",yes,True
+humidity_pct,float64,True,True,weather.humidity_pct,Proxy for rainy/overcast conditions,cleaned relative humidity,yes,True
+wind_kmh,float64,True,True,weather.wind_kmh,Weather discomfort,cleaned wind speed,yes,True
+weather_imputed,int64,True,True,weather (cleaning),Lets the model discount filled values,1 if any weather value at this hour was imputed,yes,True
+event_pre,float64,True,True,events (interval join),Arrivals before an event,1 if within 2 h before a confirmed event start in this zone,yes,True
+event_during,float64,True,True,events (interval join),Activity during the event,1 if the hour overlaps a confirmed event in this zone,yes,True
+event_post,float64,True,True,events (interval join),Crowds leave at the end - the largest expected spike,1 if within 2 h after a confirmed event end in this zone,yes,True
+event_attendance,float64,True,True,events.expected_attendance,"Bigger crowds, bigger spike","max attendance of events whose window covers the hour (blank -> type median), else 0",yes,True
+n_events,int64,True,True,events (interval join),Overlapping events stack,number of confirmed events whose window covers the hour,yes,True
+hours_to_event_start,float64,True,True,events.start,Build-up before an event,hours until the next event start in this zone (capped at 24),yes,True
+hours_since_event_end,float64,True,True,events.end,Decay after an event,hours since the last event end in this zone (capped at 24),yes,True
+football_match_window,float64,True,True,events (football_match),Event types have different effects,1 if inside the pre/during/post window of a confirmed football_match,yes,True
+concert_window,float64,True,True,events (concert),Event types have different effects,1 if inside the pre/during/post window of a confirmed concert,yes,True
+conference_window,float64,True,True,events (conference),Event types have different effects,1 if inside the pre/during/post window of a confirmed conference,yes,True
+exhibition_window,float64,True,True,events (exhibition),Event types have different effects,1 if inside the pre/during/post window of a confirmed exhibition,yes,True
+sports_run_window,float64,True,True,events (sports_run),Event types have different effects,1 if inside the pre/during/post window of a confirmed sports_run,yes,True
+road_closure_active,float64,True,True,events (road_closure),Closures can suppress or divert trips,1 if a confirmed road closure is in force in this zone,yes,True
+trips_lag_14d,float64,True,True,trips history,Recent level of the same zone-hour; >= 14 days so it is known for every forecast hour,trips in the same zone and hour 14 days earlier (missing -> mean of the other lags),yes,True
+trips_lag_21d,float64,True,True,trips history,Recent level of the same zone-hour; >= 14 days so it is known for every forecast hour,trips in the same zone and hour 21 days earlier (missing -> mean of the other lags),yes,True
+trips_lag_28d,float64,True,True,trips history,Recent level of the same zone-hour; >= 14 days so it is known for every forecast hour,trips in the same zone and hour 28 days earlier (missing -> mean of the other lags),yes,True
+trips_lag_35d,float64,True,True,trips history,Recent level of the same zone-hour; >= 14 days so it is known for every forecast hour,trips in the same zone and hour 35 days earlier (missing -> mean of the other lags),yes,True
+trips_lag_mean,float64,True,True,trips history,Smoothed recent same-weekday-same-hour level,"mean of trips_lag_{14,21,28,35}d",yes,True
